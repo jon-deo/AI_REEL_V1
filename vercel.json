@@ -1,17 +1,10 @@
 {
-    "builds": [
-        {
-            "src": "package.json",
-            "use": "@vercel/node",
-            "config": {
-                "installCommand": "apt-get update && apt-get install -y ffmpeg && npm install"
-            }
-        }
-    ],
+    "buildCommand": "npm run build",
     "functions": {
         "api/**/*.ts": {
             "memory": 3008,
             "maxDuration": 60
         }
-    }
+    },
+    "installCommand": "npm install"
 }
