@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!name || !sport) {
       return NextResponse.json(
-        { error: 'Missing required fieldsssssssss' },
+        { error: 'Missing required fieldssssssssss' },
         { status: 400 }
       );
     }
