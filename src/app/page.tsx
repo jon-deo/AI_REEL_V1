@@ -26,33 +26,6 @@ export default function Home() {
         >
           <FaUserPlus size={24} />
         </Link>
-        
-        {/* API documentation button */}
-        <Link
-          href="/api-docs"
-          className="bg-gray-700 hover:bg-gray-800 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-105"
-          aria-label="API Documentation"
-        >
-          <FaCode size={24} />
-        </Link>
-        
-        {/* Initialize database button */}
-        <Link
-          href="/api/setup"
-          className="bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-105"
-          aria-label="Initialize Database"
-        >
-          <FaDatabase size={24} />
-        </Link>
-
-        {/* Debug database button */}
-        <Link
-          href="/debug-database"
-          className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-105"
-          aria-label="Debug Database"
-        >
-          <FaTools size={24} />
-        </Link>
       </div>
     </div>
   );

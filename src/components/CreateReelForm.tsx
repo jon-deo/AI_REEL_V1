@@ -138,7 +138,7 @@ const CreateReelForm = ({ onSuccess }: CreateReelFormProps) => {
   };
 
   return (
-    <div className="max-w-lg mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <div className="w-full p-6 bg-white rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold mb-6">Create New Sports Reel</h2>
 
       {error && (
@@ -167,7 +167,7 @@ const CreateReelForm = ({ onSuccess }: CreateReelFormProps) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className={isSubmitting ? 'opacity-50 pointer-events-none' : ''}>
+      <form onSubmit={handleSubmit} className="space-y-6">
         {isLoadingCelebrities ? (
           <div className="flex items-center justify-center py-6">
             <FaSpinner className="animate-spin text-blue-500 mr-2" />

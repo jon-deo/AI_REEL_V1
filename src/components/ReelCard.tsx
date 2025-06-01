@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { motion } from 'framer-motion';
-import { FaPlay, FaPause, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { FaPlay, FaPause, FaVolumeUp, FaVolumeMute, FaRedo } from 'react-icons/fa';
 
 interface ReelCardProps {
   id: number;
@@ -16,152 +16,113 @@ interface ReelCardProps {
 }
 
 const ReelCard = ({
+  id,
   title,
+  celebrity_name,
   sport,
   video_url,
   thumbnail_url,
   isActive = false,
 }: ReelCardProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [showControls, setShowControls] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const { ref, inView } = useInView({
-    threshold: 0.7,
+    threshold: 0.5,
   });
 
-  // Control video playback based on visibility and active state
   useEffect(() => {
-    if (!videoRef.current) return;
-
-    if (inView && isActive) {
-      if (!isPlaying) {
-        playVideo();
-      }
-    } else {
-      if (isPlaying) {
-        pauseVideo();
+    if (videoRef.current) {
+      if (inView && isActive) {
+        videoRef.current.play().catch(console.error);
+        setIsPlaying(true);
+      } else {
+        videoRef.current.pause();
+        setIsPlaying(false);
       }
     }
   }, [inView, isActive]);
 
-  // Play video function
-  const playVideo = () => {
-    if (!videoRef.current) return;
-    
-    videoRef.current.play().catch((error) => {
-      console.error('Error playing video:', error);
-      setIsPlaying(false);
-    });
-    setIsPlaying(true);
-    
-    // Hide controls after play
-    setTimeout(() => {
-      setShowControls(false);
-    }, 1500);
-  };
-
-  // Pause video function
-  const pauseVideo = () => {
-    if (!videoRef.current) return;
-    videoRef.current.pause();
-    setIsPlaying(false);
-    setShowControls(true);
-  };
-
-  // Handle play/pause toggle with visual feedback
   const togglePlay = () => {
-    if (isPlaying) {
-      pauseVideo();
-    } else {
-      playVideo();
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(console.error);
+      }
+      setIsPlaying(!isPlaying);
     }
   };
 
-  // Handle mute toggle
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering video play/pause
-    if (!videoRef.current) return;
-    
-    videoRef.current.muted = !videoRef.current.muted;
-    setIsMuted(!isMuted);
+  const restartVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(console.error);
+      setIsPlaying(true);
+    }
   };
 
-  // Show controls on tap
-  const handleTap = () => {
-    setShowControls(true);
-    togglePlay();
-    
-    // Auto-hide controls after a delay if video is playing
-    if (!isPlaying) {
-      setTimeout(() => {
-        if (isPlaying) {
-          setShowControls(false);
-        }
-      }, 2000);
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
     }
   };
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      className="relative w-full h-screen bg-black overflow-hidden snap-start"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      className="h-screen w-full relative snap-start"
     >
-      {/* Video container with tap handler */}
-      <div 
-        className="absolute inset-0 w-full h-full" 
-        onClick={handleTap}
-      >
-        <video
-          ref={videoRef}
-          src={video_url}
-          poster={thumbnail_url}
-          className="absolute inset-0 w-full h-full object-cover"
-          loop
-          muted={isMuted}
-          playsInline
-        />
+      <video
+        ref={videoRef}
+        src={video_url}
+        poster={thumbnail_url}
+        loop
+        playsInline
+        className="w-full h-full object-cover"
+        onClick={togglePlay}
+      />
+      
+      {/* Video Controls */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+        <div className="flex items-center justify-between">
+          <div className="text-white">
+            <h2 className="text-xl font-bold">{title}</h2>
+            <p className="text-sm opacity-90">{celebrity_name} • {sport}</p>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {/* Restart Button */}
+            <button
+              onClick={restartVideo}
+              className="text-white hover:text-blue-400 transition-colors"
+              aria-label="Restart video"
+            >
+              <FaRedo size={20} />
+            </button>
+
+            {/* Play/Pause Button */}
+            <button
+              onClick={togglePlay}
+              className="text-white hover:text-blue-400 transition-colors"
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+            >
+              {isPlaying ? <FaPause size={20} /> : <FaPlay size={20} />}
+            </button>
+
+            {/* Mute/Unmute Button */}
+            <button
+              onClick={toggleMute}
+              className="text-white hover:text-blue-400 transition-colors"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+            >
+              {isMuted ? <FaVolumeMute size={20} /> : <FaVolumeUp size={20} />}
+            </button>
+          </div>
+        </div>
       </div>
-
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-70" />
-
-      {/* Simple Content - Just title and sport */}
-      <div className="absolute bottom-6 left-0 p-6 text-white z-10 w-full">
-        <h3 className="text-xl font-bold mb-1">{title}</h3>
-        <p className="text-sm text-gray-300">{sport}</p>
-      </div>
-
-      {/* Volume control - moved to bottom left */}
-      <div className="absolute left-6 bottom-24">
-        <button
-          className="bg-black bg-opacity-50 rounded-full p-3 text-white"
-          onClick={toggleMute}
-        >
-          {isMuted ? <FaVolumeMute size={20} /> : <FaVolumeUp size={20} />}
-        </button>
-      </div>
-
-      {/* Play/Pause indicator in center */}
-      {(!isPlaying || showControls) && (
-        <motion.div 
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-50 rounded-full p-5"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          transition={{ duration: 0.2 }}
-          onClick={togglePlay}
-        >
-          {isPlaying ? 
-            <FaPause size={30} className="text-white" /> : 
-            <FaPlay size={30} className="text-white" />
-          }
-        </motion.div>
-      )}
-    </motion.div>
+    </div>
   );
 };
 

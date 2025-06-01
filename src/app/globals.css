@@ -20,10 +20,16 @@
   --background-end-rgb: 0, 0, 0;
 }
 
+html {
+  height: 100%;
+  overflow-y: auto;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-start-rgb));
-  overflow: hidden;
+  min-height: 100%;
+  overflow-y: auto;
   overscroll-behavior-y: none; /* Prevents bounce effects on mobile */
   touch-action: pan-y; /* Improves touch scrolling */
 }
