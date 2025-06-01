@@ -7,10 +7,14 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { v2 as cloudinary } from 'cloudinary';
 
-const execAsync = promisify(exec);
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 interface VideoRequest {
   name: string;
@@ -64,48 +68,73 @@ async function createVideoFromImagesAndAudio(
   duration: number = 30
 ): Promise<void> {
   try {
-    // Calculate duration for each image
-    const imageDuration = Math.max(3, Math.ceil(duration / imageFiles.length));
+    // Upload images to Cloudinary and store both URLs and public_ids
+    const imageUploadPromises = imageFiles.map(async (imagePath) => {
+      const result = await cloudinary.uploader.upload(imagePath, {
+        resource_type: 'image',
+        folder: 'sports-reels'
+      });
+      return {
+        url: result.secure_url,
+        public_id: result.public_id
+      };
+    });
 
-    // Create filter complex string
-    const filterComplex = [
-      // Concatenate images
-      `[0:v][1:v][2:v]concat=n=${imageFiles.length}:v=1:a=0[v]`,
-      // Add audio
-      `[3:a]apad[a]`,
-      // Set correct duration for audio
-      `[a]atrim=duration=${duration}[atrimmed]`,
-      // Map streams
-      `[atrimmed]amix=inputs=1[amixed]`
-    ].join(';');
+    // Upload audio to Cloudinary
+    const audioResult = await cloudinary.uploader.upload(audioFile, {
+      resource_type: 'video',
+      folder: 'sports-reels'
+    });
 
-    // Build FFmpeg command
-    const command = [
-      'ffmpeg',
-      '-y', // Overwrite output file if exists
-      ...imageFiles.flatMap((img, i) => ['-loop', '1', '-t', imageDuration.toString(), '-i', img]),
-      '-i', audioFile,
-      '-filter_complex', filterComplex,
-      '-map', '[v]',
-      '-map', '[amixed]',
-      '-c:v', 'libx264',
-      '-preset', 'medium',
-      '-tune', 'film',
-      '-crf', '23',
-      '-b:v', '2M',
-      '-r', '24',
-      '-pix_fmt', 'yuv420p',
-      '-movflags', '+faststart',
-      outputFile
-    ].join(' ');
+    const uploadedImages = await Promise.all(imageUploadPromises);
 
-    // Execute FFmpeg command
-    const { stdout, stderr } = await execAsync(command);
-    console.log('FFmpeg output:', stdout);
-    if (stderr) console.error('FFmpeg stderr:', stderr);
+    // Create video using Cloudinary's upload API
+    const result = await cloudinary.uploader.upload(uploadedImages[0].url, {
+      resource_type: 'video',
+      format: 'mp4',
+      transformation: {
+        fetch_format: 'mp4',
+        video_codec: 'auto',
+        audio_codec: 'aac',
+        audio_url: audioResult.secure_url,
+        transition: 'fade:1000',
+        duration: duration,
+        overlay: uploadedImages.map((image, index) => ({
+          resource_type: 'image',
+          public_id: image.public_id,
+          start_offset: index * (duration / uploadedImages.length),
+          end_offset: (index + 1) * (duration / uploadedImages.length)
+        }))
+      }
+    });
 
-  } catch (error) {
+    if (!result || !result.secure_url) {
+      throw new Error('Failed to create video: No URL returned from Cloudinary');
+    }
+
+    console.log('Video created successfully:', result.secure_url);
+
+    // Download the final video
+    const response = await axios({
+      url: result.secure_url,
+      method: 'GET',
+      responseType: 'stream',
+      timeout: 30000 // 30 second timeout
+    });
+
+    const writer = fs.createWriteStream(outputFile);
+    response.data.pipe(writer);
+
+    return new Promise<void>((resolve, reject) => {
+      writer.on('finish', () => resolve());
+      writer.on('error', reject);
+    });
+
+  } catch (error: any) {
     console.error('Error creating video:', error);
+    if (error.response) {
+      console.error('Cloudinary API response:', error.response.data);
+    }
     throw error;
   }
 }
@@ -142,8 +171,7 @@ async function getCelebrityImagesFromUnsplash(
     const queriesNeeded = queries.slice(0, count);
 
     for (let i = 0; i < queriesNeeded.length; i++) {
-      // Unsplash Source API doesn't require authentication and is perfect for this use case
-      // It returns a random high quality image matching the query
+      // Use Unsplash API with proper headers
       const imageUrl = `https://source.unsplash.com/featured/?${queriesNeeded[i]},athlete`;
       const localPath = path.join(tempDir, `unsplash-${i}.jpg`);
 
@@ -151,7 +179,23 @@ async function getCelebrityImagesFromUnsplash(
         (async () => {
           try {
             console.log(`Downloading image for query "${queriesNeeded[i]}"...`);
-            await downloadFile(imageUrl, localPath);
+            const response = await axios({
+              url: imageUrl,
+              method: 'GET',
+              responseType: 'stream',
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              },
+              timeout: 10000 // 10 second timeout
+            });
+
+            const writer = fs.createWriteStream(localPath);
+            response.data.pipe(writer);
+
+            await new Promise<void>((resolve, reject) => {
+              writer.on('finish', () => resolve());
+              writer.on('error', reject);
+            });
 
             // Verify the file exists and has reasonable size
             if (fs.existsSync(localPath) && fs.statSync(localPath).size > 10000) {
