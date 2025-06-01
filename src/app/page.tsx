@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import ReelViewer from '@/components/ReelViewer';
-import { FaPlus, FaCode, FaDatabase, FaUserPlus, FaTools } from 'react-icons/fa';
+import { FaPlus, FaUserPlus } from 'react-icons/fa';
 
 export default function Home() {
   return (

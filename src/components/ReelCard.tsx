@@ -2,11 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
-import { motion } from 'framer-motion';
 import { FaPlay, FaPause, FaVolumeUp, FaVolumeMute, FaRedo } from 'react-icons/fa';
 
 interface ReelCardProps {
-  id: number;
   title: string;
   celebrity_name: string;
   sport: string;
@@ -16,7 +14,6 @@ interface ReelCardProps {
 }
 
 const ReelCard = ({
-  id,
   title,
   celebrity_name,
   sport,
